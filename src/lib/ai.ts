@@ -61,22 +61,22 @@ export async function runReActToolAgent<TOutput extends z.ZodTypeAny>(options: {
   });
 
   for (let step = 1; step <= maxSteps; step++) {
+    const mustCallTool = traces.length === 0 && step < maxSteps;
     const prompt = `${systemPrompt}
 
 AVAILABLE TOOLS:
 ${toolDescriptions}
 
 RULES:
-- First call tools to gather real facts and verify exact numbers before producing finalResult.
-- When calling a tool, set "toolCall" with exact tool "name" and valid JSON string "argsJson", and leave "finalResult" empty.
-- Once all required tools have been executed and verified, leave "toolCall" empty and populate "finalResult".
+- ${mustCallTool ? 'MANDATORY: You have not called any tools yet. You MUST set "toolCall" now and leave "finalResult" empty.' : 'Once required tools have been executed, leave "toolCall" empty and populate "finalResult".'}
+- When calling a tool, set "toolCall" with exact tool "name" and valid JSON string "argsJson".
 
 EXECUTION TRACE SO FAR:
 ${history.join('\n\n')}`;
 
     const decision = await generateStructured(stepSchema, prompt);
 
-    if (decision.finalResult !== undefined) {
+    if (decision.finalResult !== undefined && !mustCallTool) {
       return { result: decision.finalResult, traces };
     }
 
