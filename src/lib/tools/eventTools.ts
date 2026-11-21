@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { VENDOR_CATALOG } from '@/lib/presets';
-import { calculateGstBreakdown, checkBudget, formatINR } from '@/lib/guardrails';
-import { DietarySplit, IndianCity } from '@/types/blackboard';
+import {
+  calculateGstBreakdown,
+  checkBudget,
+  findScheduleConflicts,
+  formatINR,
+} from '@/lib/guardrails';
+import { DietarySplit, IndianCity, SessionSchema } from '@/types/blackboard';
 
 export const SearchIndianVendorsInputSchema = z.object({
   city: z.enum(['Bengaluru', 'Mumbai', 'Delhi NCR', 'Hyderabad']),
@@ -81,5 +86,46 @@ export function calculateCateringAndGstTool(input: {
     withinBudget: audit.withinBudget,
     utilizationPct: audit.utilizationPct,
     requiresHitlApproval: audit.requiresHitlApproval,
+  };
+}
+
+export const AuditScheduleInputSchema = z.object({
+  sessions: z.array(SessionSchema),
+});
+
+export function auditScheduleConflictsTool(input: {
+  sessions: z.infer<typeof SessionSchema>[];
+}) {
+  const conflicts = findScheduleConflicts(input.sessions);
+  return {
+    status: conflicts.length === 0 ? 'CLEAN' : 'CONFLICTS_FOUND',
+    conflictCount: conflicts.length,
+    conflicts,
+  };
+}
+
+export const DispatchWhatsAppAlertInputSchema = z.object({
+  city: z.string(),
+  affectedSessionTitle: z.string(),
+  newRoomOrTime: z.string(),
+  impactedAttendees: z.number(),
+  shortMessage: z.string(),
+});
+
+export function dispatchWhatsAppAlertTool(input: {
+  city: string;
+  affectedSessionTitle: string;
+  newRoomOrTime: string;
+  impactedAttendees: number;
+  shortMessage: string;
+}) {
+  const requiresHitlApproval = input.impactedAttendees >= 250;
+  return {
+    channel: 'WhatsApp Business API + SMS Fallback',
+    city: input.city,
+    deliveryStatus: requiresHitlApproval ? 'QUEUED_FOR_OPS_APPROVAL' : 'DISPATCHED',
+    impactedAttendees: input.impactedAttendees,
+    requiresHitlApproval,
+    formattedBroadcast: `[EventMind Ops • ${input.city}] ${input.shortMessage} (${input.affectedSessionTitle} → ${input.newRoomOrTime})`,
   };
 }
