@@ -14,9 +14,9 @@ export function AgentStream({ logs }: { logs: AgentLog[] }) {
   const [expandedTraces, setExpandedTraces] = useState<Record<number, boolean>>({});
 
   const badgeColor: Record<AgentLog['status'], string> = {
-    info: 'bg-sky-500/20 text-sky-300 border-sky-500/30',
-    warning: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    success: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    info: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    success: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   };
 
   const toggleTrace = (idx: number) => {
@@ -24,22 +24,22 @@ export function AgentStream({ logs }: { logs: AgentLog[] }) {
   };
 
   return (
-    <aside className="sticky top-6 rounded-2xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-lg">
+    <aside className="sticky top-6 rounded-2xl border border-slate-800/90 bg-[#0B1120] p-4 text-slate-100 shadow-lg shadow-slate-950/10 dark:border-slate-800 dark:shadow-black/40">
       <div className="mb-3 flex items-center justify-between border-b border-slate-800 pb-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <Terminal className="h-4 w-4 text-indigo-400" />
           <span>Agent Neural Stream</span>
         </div>
-        <span className="rounded-md bg-slate-900 px-2 py-0.5 text-[10px] font-medium text-slate-400 border border-slate-800">
+        <span className="rounded-md border border-slate-800 bg-slate-900 px-2 py-0.5 font-mono text-[10px] font-medium text-indigo-300">
           ReAct Telemetry
         </span>
       </div>
 
-      <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1 text-xs">
+      <div className="max-h-[650px] space-y-3 overflow-y-auto pr-1 text-xs">
         {logs.length === 0 && (
-          <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-4 text-center text-slate-400">
-            Select an Indian city preset and launch planning to inspect live agent tool calls and Critic audits.
+          <div className="rounded-xl border border-dashed border-slate-800 bg-slate-900/40 p-5 text-center leading-relaxed text-slate-400">
+            Select an Indian city preset and launch orchestration to inspect live agent tool calls and Critic audits.
           </div>
         )}
 
@@ -50,7 +50,7 @@ export function AgentStream({ logs }: { logs: AgentLog[] }) {
           return (
             <div
               key={idx}
-              className="rounded-xl border border-slate-800/90 bg-slate-900/80 p-3 transition hover:border-slate-700"
+              className="rounded-xl border border-slate-800/90 bg-slate-900/75 p-3 transition hover:border-slate-700"
             >
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <span
@@ -58,12 +58,12 @@ export function AgentStream({ logs }: { logs: AgentLog[] }) {
                 >
                   {log.agent}
                 </span>
-                <span className="text-[10px] font-mono text-slate-500">
+                <span className="font-mono text-[10px] text-slate-500">
                   {log.timestamp}
                 </span>
               </div>
 
-              <p className="text-slate-200 leading-relaxed">{log.message}</p>
+              <p className="leading-relaxed text-slate-200">{log.message}</p>
 
               {hasTraces && log.toolTraces && (
                 <div className="mt-2.5 border-t border-slate-800/80 pt-2">
@@ -89,7 +89,7 @@ export function AgentStream({ logs }: { logs: AgentLog[] }) {
                       {log.toolTraces.map((trace, tIdx) => (
                         <div
                           key={tIdx}
-                          className="rounded-lg border border-slate-800 bg-slate-950 p-2 font-mono text-[10px]"
+                          className="rounded-lg border border-slate-800 bg-slate-950/90 p-2 font-mono text-[10px]"
                         >
                           <div className="flex items-center justify-between text-emerald-400">
                             <span className="font-semibold">{trace.toolName}()</span>
@@ -98,10 +98,16 @@ export function AgentStream({ logs }: { logs: AgentLog[] }) {
                               {trace.durationMs}ms
                             </span>
                           </div>
-                          <div className="mt-1 truncate text-slate-400" title={trace.inputSummary}>
+                          <div
+                            className="mt-1 truncate text-slate-400"
+                            title={trace.inputSummary}
+                          >
                             in: {trace.inputSummary}
                           </div>
-                          <div className="mt-0.5 line-clamp-2 text-slate-300" title={trace.outputSummary}>
+                          <div
+                            className="mt-0.5 line-clamp-2 text-slate-300"
+                            title={trace.outputSummary}
+                          >
                             out: {trace.outputSummary}
                           </div>
                         </div>
