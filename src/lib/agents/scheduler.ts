@@ -1,9 +1,8 @@
-import { google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
 import { z } from 'zod';
 import { EventBrief, Session, SessionSchema } from '@/types/blackboard';
 import { VENUE_ROOMS } from '@/lib/presets';
 import { findScheduleConflicts } from '@/lib/guardrails';
+import { generateStructured } from '@/lib/ai';
 
 export async function runSchedulerAgent(brief: EventBrief): Promise<{
   sessions: Session[];
@@ -15,17 +14,16 @@ export async function runSchedulerAgent(brief: EventBrief): Promise<{
   let conflictsResolved = 0;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const { object } = await generateObject({
-      model: google('gemini-3.5-flash-lite'),
-      schema: z.object({ sessions: z.array(SessionSchema).min(6).max(8) }),
-      prompt: `Build a multi-track conference agenda for "${brief.title}" (${brief.attendees} attendees).
+    const result = await generateStructured(
+      z.object({ sessions: z.array(SessionSchema) }),
+      `Build a 6-session multi-track conference agenda for "${brief.title}" (${brief.attendees} attendees).
 Tracks: ${brief.tracks.join(', ')}.
 Available Rooms: ${JSON.stringify(VENUE_ROOMS)}.
-Rules: Use 24h times ("09:00" to "17:00"), assign realistic speakers, keep expectedAttendance <= roomCapacity, and avoid room or speaker overlaps.
-${feedback ? `FIX THESE AUDIT ERRORS FROM PREVIOUS DRAFT:\n${feedback}` : ''}`,
-    });
+Rules: Use 24h times ("09:00" to "17:00"), assign unique session ids ("s1" to "s6") and realistic speakers, keep expectedAttendance <= roomCapacity, and avoid room or speaker overlaps.
+${feedback ? `FIX THESE AUDIT ERRORS FROM PREVIOUS DRAFT:\n${feedback}` : ''}`
+    );
 
-    sessions = object.sessions;
+    sessions = result.sessions;
     const conflicts = findScheduleConflicts(sessions);
 
     if (conflicts.length === 0) {

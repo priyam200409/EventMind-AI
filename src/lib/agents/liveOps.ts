@@ -1,9 +1,8 @@
-import { google } from '@ai-sdk/google';
-import { generateObject } from 'ai';
 import { z } from 'zod';
 import { Session, SessionSchema } from '@/types/blackboard';
 import { VENUE_ROOMS } from '@/lib/presets';
 import { findScheduleConflicts } from '@/lib/guardrails';
+import { generateStructured } from '@/lib/ai';
 
 export async function runLiveOpsAgent(
   sessions: Session[],
@@ -13,27 +12,26 @@ export async function runLiveOpsAgent(
   alertMessage: string;
   resolutionSummary: string;
 }> {
-  const { object } = await generateObject({
-    model: google('gemini-3.5-flash-lite'),
-    schema: z.object({
+  const result = await generateStructured(
+    z.object({
       updatedSessions: z.array(SessionSchema),
       alertMessage: z.string(),
       resolutionSummary: z.string(),
     }),
-    prompt: `LIVE EVENT CRISIS: "${crisis}"
+    `LIVE EVENT CRISIS: "${crisis}"
 Current Schedule: ${JSON.stringify(sessions)}
 Available Rooms: ${JSON.stringify(VENUE_ROOMS)}
-Adjust affected sessions (shift times or move rooms within capacity) to eliminate bottlenecks/delays. Keep unaffected sessions intact, ensure expectedAttendance <= roomCapacity, and draft a concise push notification for attendees & staff.`,
-  });
+Adjust affected sessions (shift times or move rooms within capacity) to eliminate bottlenecks/delays. Keep unaffected sessions intact, ensure expectedAttendance <= roomCapacity, and draft a concise push notification for attendees & staff.`
+  );
 
-  const remainingConflicts = findScheduleConflicts(object.updatedSessions);
+  const remainingConflicts = findScheduleConflicts(result.updatedSessions);
   const note = remainingConflicts.length === 0
-    ? object.resolutionSummary
-    : `${object.resolutionSummary} (Verified ${object.updatedSessions.length} sessions re-routed)`;
+    ? result.resolutionSummary
+    : `${result.resolutionSummary} (Verified ${result.updatedSessions.length} sessions re-routed)`;
 
   return {
-    updatedSessions: object.updatedSessions,
-    alertMessage: object.alertMessage,
+    updatedSessions: result.updatedSessions,
+    alertMessage: result.alertMessage,
     resolutionSummary: note,
   };
 }
