@@ -1,17 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { ApprovalGate, IndianCity, Session } from '@/types/blackboard';
-import { INDIAN_CRISIS_PRESETS } from '@/lib/presets';
+import { motion } from 'framer-motion';
+import { ApprovalGate, Session } from '@/types/blackboard';
 import {
   AlertTriangle,
-  MessageSquare,
-  ArrowRight,
-  ShieldAlert,
   Check,
   X,
+  Copy,
+  ExternalLink,
+  ShieldAlert,
   Send,
+  ArrowRight,
+  Clock,
 } from 'lucide-react';
+
+const CRISIS_PRESETS = [
+  'Keynote speaker delayed by 30 mins due to airport traffic',
+  'Main Plenary Hall overcapacity (110 extra delegates arrived)',
+  'LED wall & primary mic failure in Main Hall — shift to Studio A',
+];
 
 export function StageLiveOps({
   city = 'Bengaluru',
@@ -25,201 +33,242 @@ export function StageLiveOps({
   onTriggerCrisis,
   onComputeRoi,
 }: {
-  city?: IndianCity;
+  city?: string;
   sessions: Session[];
   alertMessage?: string;
   whatsappBroadcast?: string;
   approvalGate?: ApprovalGate | null;
   loading: boolean;
-  onApproveGate?: (id: string) => void;
-  onRejectGate?: (id: string) => void;
+  onApproveGate: (id: string) => void;
+  onRejectGate: (id: string) => void;
   onTriggerCrisis: (crisis: string) => void;
   onComputeRoi: () => void;
 }) {
-  const [customCrisis, setCustomCrisis] = useState('');
-  const presets = INDIAN_CRISIS_PRESETS[city] ?? INDIAN_CRISIS_PRESETS.Bengaluru;
+  const [customCrisis, setCustomCrisis] = useState(CRISIS_PRESETS[0]);
+  const [recipientPhone, setRecipientPhone] = useState('');
+  const [copied, setCopied] = useState(false);
 
-  const handleCustomSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customCrisis.trim()) return;
-    onTriggerCrisis(customCrisis.trim());
-    setCustomCrisis('');
+  const isGatePending = approvalGate?.status === 'pending';
+  const isGateApproved = !approvalGate || approvalGate.status === 'approved';
+
+  const buildWhatsAppUrl = () => {
+    const text = encodeURIComponent(whatsappBroadcast || '');
+    const digitsOnly = recipientPhone.replace(/\D/g, '');
+    if (digitsOnly.length >= 10) {
+      const normalized = digitsOnly.length === 10 ? `91${digitsOnly}` : digitsOnly;
+      return `https://wa.me/${normalized}?text=${text}`;
+    }
+    return `https://wa.me/?text=${text}`;
+  };
+
+  const handleCopy = async () => {
+    if (!whatsappBroadcast) return;
+    try {
+      await navigator.clipboard.writeText(whatsappBroadcast);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore clipboard errors in restricted contexts
+    }
   };
 
   return (
-    <div className="space-y-5 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-[#111827]">
-      <div className="border-b border-slate-100 pb-4 dark:border-slate-800">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300">
-          Stage 03 • Real-Time Disruption Recovery ({city})
-        </span>
-        <h2 className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Live Event Command Center (Chaos Mode)
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-          Inject a live {city} operational emergency to watch the LiveOps ReAct Agent re-route rooms, verify zero conflicts, and queue WhatsApp alerts.
-        </p>
-      </div>
-
-      {/* City-Specific Indian Chaos Presets */}
-      <div className="space-y-2">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          1-Click {city} Disruption Scenarios
+    <div className="space-y-5">
+      {/* Crisis Trigger Panel */}
+      <div className="rounded-2xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                LiveOps Incident & WhatsApp Responder ({city})
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Simulate an event emergency—the agent re-routes sessions and drafts a guest WhatsApp broadcast.
+              </p>
+            </div>
+          </div>
         </div>
+
         <div className="flex flex-wrap gap-2">
-          {presets.map((crisis) => (
+          {CRISIS_PRESETS.map((preset) => (
             <button
-              key={crisis}
+              key={preset}
               type="button"
               disabled={loading}
-              onClick={() => onTriggerCrisis(crisis)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/90 bg-amber-50/80 px-3 py-2 text-left text-xs font-medium text-amber-950 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-200 dark:hover:bg-amber-500/20"
+              onClick={() => {
+                setCustomCrisis(preset);
+                onTriggerCrisis(preset);
+              }}
+              className="text-left rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-amber-500/10 hover:border-amber-500/30 border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 transition disabled:opacity-50"
             >
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>{crisis}</span>
+              {preset}
             </button>
           ))}
         </div>
+
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <input
+            value={customCrisis}
+            onChange={(e) => setCustomCrisis(e.target.value)}
+            placeholder="Describe a live emergency..."
+            className="premium-input flex-1"
+          />
+          <button
+            type="button"
+            disabled={loading || !customCrisis.trim()}
+            onClick={() => onTriggerCrisis(customCrisis)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs sm:text-sm px-5 py-3 shadow-md shadow-amber-600/20 transition disabled:opacity-50 shrink-0"
+          >
+            <Send className="h-4 w-4" />
+            {loading ? 'Mitigating...' : 'Run LiveOps Agent'}
+          </button>
+        </div>
       </div>
 
-      {/* Custom Disruption Input */}
-      <form onSubmit={handleCustomSubmit} className="flex gap-2">
-        <input
-          value={customCrisis}
-          onChange={(e) => setCustomCrisis(e.target.value)}
-          placeholder={`Simulate custom ${city} disruption (e.g., VIP security protocol at Main Hall)...`}
-          className="flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100"
-        />
-        <button
-          type="submit"
-          disabled={loading || !customCrisis.trim()}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 disabled:opacity-40 dark:bg-indigo-600 dark:hover:bg-indigo-500"
-        >
-          <Send className="h-3.5 w-3.5" />
-          Inject
-        </button>
-      </form>
-
-      {/* HITL Gate for Major Live Schedule Shifts */}
-      {approvalGate && approvalGate.agent === 'LiveOps' && (
+      {/* Human-in-the-Loop Approval Gate */}
+      {approvalGate && (
         <div
-          className={`rounded-xl border p-4 ${
+          className={`rounded-2xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
             approvalGate.status === 'approved'
-              ? 'border-emerald-300 bg-emerald-50/80 dark:border-emerald-500/30 dark:bg-emerald-500/10'
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30'
               : approvalGate.status === 'rejected'
-              ? 'border-rose-300 bg-rose-50/80 dark:border-rose-500/30 dark:bg-rose-500/10'
-              : 'border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10'
+              ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/30'
+              : 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30'
           }`}
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-2.5">
-              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white">
-                  LiveOps HITL Sign-Off ({approvalGate.status.toUpperCase()})
-                </div>
-                <p className="mt-0.5 text-xs text-slate-800 dark:text-slate-200">
-                  {approvalGate.reason}
-                </p>
-                <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
-                  {approvalGate.impactSummary}
-                </p>
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div>
+              <div className="text-xs font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
+                Manager Approval ({approvalGate.agent}) • {approvalGate.status.toUpperCase()}
               </div>
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">{approvalGate.reason}</p>
+              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
+                Impact: {approvalGate.impactSummary}
+              </p>
             </div>
+          </div>
 
-            {approvalGate.status === 'pending' && onApproveGate && onRejectGate && (
-              <div className="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  onClick={() => onApproveGate(approvalGate.id)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  Approve Broadcast
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onRejectGate(approvalGate.id)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Hold
-                </button>
-              </div>
+          {isGatePending && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => onApproveGate(approvalGate.id)}
+                className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3.5 py-2 shadow-sm transition"
+              >
+                <Check className="h-3.5 w-3.5" /> Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => onRejectGate(approvalGate.id)}
+                className="inline-flex items-center gap-1 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs font-bold px-3.5 py-2 transition"
+              >
+                <X className="h-3.5 w-3.5" /> Reject
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Ready-to-Send WhatsApp Guest Broadcast Card */}
+      {whatsappBroadcast && (
+        <div className="rounded-2xl bg-white dark:bg-[#0d1526] border border-emerald-500/30 p-6 shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 px-3 py-1 text-[11px] font-bold">
+                WhatsApp Guest Broadcast Draft
+              </span>
+              {alertMessage && (
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-2">{alertMessage}</p>
+              )}
+            </div>
+          </div>
+
+          <pre className="whitespace-pre-wrap rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-4 text-xs sm:text-sm font-sans text-slate-800 dark:text-slate-200 leading-relaxed">
+            {whatsappBroadcast}
+          </pre>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <input
+              type="tel"
+              value={recipientPhone}
+              onChange={(e) => setRecipientPhone(e.target.value)}
+              placeholder="Optional phone (e.g. 9876543210) or leave blank to pick group"
+              className="premium-input flex-1 !py-2.5 text-xs"
+            />
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 hover:bg-slate-200/70 dark:hover:bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 transition"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {copied ? 'Copied!' : 'Copy Text'}
+            </button>
+
+            {isGateApproved ? (
+              <a
+                href={buildWhatsAppUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 shadow-md shadow-emerald-600/20 transition"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in WhatsApp
+              </a>
+            ) : (
+              <span className="inline-flex items-center justify-center rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold px-4 py-2.5">
+                Click Approve above to send
+              </span>
             )}
           </div>
         </div>
       )}
 
-      {/* WhatsApp Business & SMS Notification Preview */}
-      {(whatsappBroadcast || alertMessage) && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-xs dark:border-emerald-500/30 dark:bg-emerald-500/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300">
-              <MessageSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-              <span>WhatsApp Business & SMS Delegate Broadcast</span>
-            </div>
-            <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[10px] font-semibold text-white">
-              Verified Payload
-            </span>
-          </div>
-          <p className="mt-2.5 rounded-lg border border-emerald-200/80 bg-white p-3 font-mono text-[11px] text-slate-800 dark:border-emerald-500/20 dark:bg-slate-950 dark:text-emerald-200">
-            {whatsappBroadcast ?? alertMessage}
-          </p>
+      {/* Live Updated IST Schedule */}
+      <div className="rounded-2xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-teal-700 dark:text-cyan-400" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            Live Updated IST Schedule ({sessions.length} Sessions)
+          </h3>
         </div>
-      )}
 
-      {/* Live Hall Occupancy Cards */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {sessions.map((s) => {
-          const pct = Math.min(
-            100,
-            Math.round((s.expectedAttendance / s.roomCapacity) * 100)
-          );
-          return (
+        <div className="space-y-2.5">
+          {sessions.map((s) => (
             <div
               key={s.id}
-              className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 text-xs transition hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-indigo-500/40"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 px-4 py-3"
             >
-              <div className="flex items-start justify-between gap-2 font-semibold text-slate-900 dark:text-white">
-                <span>{s.title}</span>
-                <span className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-0.5 font-mono text-[11px] text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+              <div className="flex items-center gap-3">
+                <span className="rounded-lg bg-cyan-500/10 text-teal-800 dark:text-cyan-300 border border-cyan-500/20 px-2.5 py-1 font-mono text-xs font-bold">
                   {s.startTime}–{s.endTime}
                 </span>
+                <div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{s.title}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{s.speaker}</div>
+                </div>
               </div>
-              <div className="mt-1 text-slate-600 dark:text-slate-400">
-                {s.room} • {s.speaker}
-              </div>
-              <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                <span>Occupancy Load</span>
-                <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                  {s.expectedAttendance}/{s.roomCapacity} ({pct}%)
-                </span>
-              </div>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    pct > 90 ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${pct}%` }}
-                />
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {s.room} ({s.expectedAttendance}/{s.roomCapacity})
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      <div className="flex justify-end pt-2">
-        <button
+        <motion.button
+          whileHover={{ scale: 1.008 }}
+          whileTap={{ scale: 0.985 }}
           type="button"
           disabled={loading}
           onClick={onComputeRoi}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold text-sm py-3.5 px-6 shadow-lg shadow-indigo-600/20 transition disabled:opacity-50"
         >
-          {loading
-            ? 'Computing Indian Enterprise ROEI...'
-            : 'Generate Post-Event Matchmaking & ROI'}
-          <ArrowRight className="h-4 w-4" />
-        </button>
+          Compute Event Results & ROEI <ArrowRight className="h-4 w-4" />
+        </motion.button>
       </div>
     </div>
   );

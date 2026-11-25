@@ -5,8 +5,25 @@ import {
   findScheduleConflicts,
   formatINR,
 } from '@/lib/guardrails';
+import {
+  ALL_INDIAN_CITIES,
+  INDIAN_CRISIS_PRESETS,
+  VENDOR_CATALOG,
+} from '@/lib/presets';
+import { IndianCitySchema } from '@/types/blackboard';
 
-describe('Deterministic Guardrails & Indian GST Engine', () => {
+describe('Deterministic Guardrails, Indian GST Engine & 105-City Matrix', () => {
+  it('validates >= 100 Indian cities with complete venue, catering, AV, and crisis coverage', () => {
+    expect(ALL_INDIAN_CITIES.length).toBeGreaterThanOrEqual(100);
+
+    for (const entry of ALL_INDIAN_CITIES) {
+      expect(IndianCitySchema.safeParse(entry.city).success).toBe(true);
+      const cityVendors = VENDOR_CATALOG.filter((v) => v.city === entry.city);
+      expect(cityVendors.length).toBeGreaterThanOrEqual(3);
+      expect(INDIAN_CRISIS_PRESETS[entry.city]?.length).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it('formats INR currency using Indian lakh/crore grouping', () => {
     expect(formatINR(4500000)).toBe('₹45,00,000');
   });
@@ -24,7 +41,6 @@ describe('Deterministic Guardrails & Indian GST Engine', () => {
       { category: 'Venue' as const, vendorName: 'BIEC Hall', cost: 2500000, rationale: 'Main hall' },
       { category: 'Catering' as const, vendorName: 'Sattvam', cost: 1500000, rationale: 'Jain & Veg' },
     ];
-    // Base = ₹40,00,000 + 18% GST (₹7,20,000) = ₹47,20,000 > ₹45,00,000
     const result = checkBudget(quotes, 4500000, true);
     expect(result.withinBudget).toBe(false);
     expect(result.gstAmount).toBe(720000);

@@ -1,328 +1,274 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { EventBrief, IndianCity } from '@/types/blackboard';
-import { INDIAN_DEMO_PRESETS } from '@/lib/presets';
+import { ALL_INDIAN_CITIES, CITY_BRIEF_PRESETS } from '@/lib/presets';
 import { formatINR } from '@/lib/guardrails';
-import {
-  Sparkles,
-  Play,
-  MapPin,
-  Users,
-  IndianRupee,
-  Utensils,
-  ShieldCheck,
-} from 'lucide-react';
+import { Play, MapPin, Target, Receipt, Sparkles, Bot } from 'lucide-react';
 
 export function StageBrief({
   initialBrief,
   loading,
   onRunPlan,
+  onRunAutoPilot,
 }: {
   initialBrief: EventBrief;
   loading: boolean;
   onRunPlan: (brief: EventBrief) => void;
+  onRunAutoPilot?: (brief: EventBrief, autoCrisisLabel?: string) => void;
 }) {
-  const [activePreset, setActivePreset] = useState<'bengaluru' | 'mumbai' | 'delhi'>('bengaluru');
   const [brief, setBrief] = useState<EventBrief>({
     ...initialBrief,
     city: initialBrief.city ?? 'Bengaluru',
     includeGst: initialBrief.includeGst ?? true,
-    dietarySplit: initialBrief.dietarySplit ?? {
-      vegPct: 55,
-      jainPct: 15,
-      nonVegPct: 30,
-    },
   });
   const [tracksInput, setTracksInput] = useState(initialBrief.tracks.join(', '));
+  const [autoPilot, setAutoPilot] = useState(false);
+  const [autoCrisis, setAutoCrisis] = useState('Keynote speaker delayed by 30m in transit');
 
-  const applyPreset = (key: 'bengaluru' | 'mumbai' | 'delhi') => {
-    setActivePreset(key);
-    const selected = INDIAN_DEMO_PRESETS[key];
-    setBrief(selected);
-    setTracksInput(selected.tracks.join(', '));
+  const handleCityChange = (cityStr: string) => {
+    const city = cityStr as IndianCity;
+    const preset = CITY_BRIEF_PRESETS[city];
+    if (preset) {
+      setBrief(preset);
+      setTracksInput(preset.tracks.join(', '));
+    } else {
+      setBrief((prev) => ({ ...prev, city }));
+    }
   };
 
-  const dietary = brief.dietarySplit ?? { vegPct: 55, jainPct: 15, nonVegPct: 30 };
-  const totalDietary = Math.max(1, dietary.vegPct + dietary.jainPct + dietary.nonVegPct);
-
-  const updateDietary = (field: 'vegPct' | 'jainPct' | 'nonVegPct', value: number) => {
-    const clamped = Math.max(0, Math.min(100, value));
-    setBrief({
-      ...brief,
-      dietarySplit: {
-        ...dietary,
-        [field]: clamped,
-      },
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const buildCleanedBrief = (): EventBrief => {
     const tracks = tracksInput
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
-    onRunPlan({
+    return {
       ...brief,
-      tracks: tracks.length ? tracks : ['General Tech'],
-    });
+      tracks: tracks.length ? tracks : ['AI & Cloud', 'Product & Growth', 'Enterprise Ops'],
+    };
   };
 
-  const inputClass =
-    'mt-1.5 w-full rounded-xl border border-slate-300/90 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-2xs transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20';
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = buildCleanedBrief();
+    if (autoPilot && onRunAutoPilot) {
+      onRunAutoPilot(cleaned, autoCrisis);
+    } else {
+      onRunPlan(cleaned);
+    }
+  };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-[#111827]"
-    >
-      {/* Header & Segmented Metro Presets */}
-      <div className="flex flex-col gap-4 border-b border-slate-100 pb-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-        <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-semibold text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/15 dark:text-indigo-300">
-            Stage 01 • Enterprise Parameters
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Event Core Card */}
+      <div className="rounded-2xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-cyan-500/10 text-teal-700 dark:text-cyan-400 border border-cyan-500/20">
+              <Target className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Event Architecture</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Configure scale, tracks, and host hub across {ALL_INDIAN_CITIES.length} Indian cities.
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 px-3 py-1 text-[11px] font-semibold">
+            <Sparkles className="h-3 w-3" /> Agent Ready
           </span>
-          <h2 className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Configure Indian Enterprise Event Brief
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Customize parameters or pick an Indian metro preset for instant autonomous orchestration.
-          </p>
         </div>
 
-        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100/80 p-1 dark:border-slate-800 dark:bg-slate-900">
-          {(
-            [
-              { key: 'bengaluru', label: 'Bengaluru' },
-              { key: 'mumbai', label: 'Mumbai' },
-              { key: 'delhi', label: 'Delhi NCR' },
-            ] as const
-          ).map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => applyPreset(tab.key)}
-              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-                activePreset === tab.key
-                  ? 'bg-white text-indigo-700 shadow-2xs dark:bg-indigo-600 dark:text-white'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-            >
-              {tab.key === 'bengaluru' && <Sparkles className="h-3 w-3" />}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Core Event Inputs */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Event Title
-          </label>
-          <input
-            required
-            value={brief.title}
-            onChange={(e) => setBrief({ ...brief, title: e.target.value })}
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-            <MapPin className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            Host Metro City
-          </label>
-          <select
-            value={brief.city ?? 'Bengaluru'}
-            onChange={(e) =>
-              setBrief({ ...brief, city: e.target.value as IndianCity })
-            }
-            className={inputClass}
-          >
-            <option value="Bengaluru">Bengaluru (ITPL / BIEC)</option>
-            <option value="Mumbai">Mumbai (BKC / Airport Corridor)</option>
-            <option value="Delhi NCR">Delhi NCR (Dwarka / Aerocity)</option>
-            <option value="Hyderabad">Hyderabad (HITEC City)</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Venue Format
-          </label>
-          <select
-            value={brief.venueType}
-            onChange={(e) =>
-              setBrief({
-                ...brief,
-                venueType: e.target.value as EventBrief['venueType'],
-              })
-            }
-            className={inputClass}
-          >
-            <option value="Convention Center">Convention Center</option>
-            <option value="Luxury Hotel">Luxury 5-Star Hotel Ballroom</option>
-            <option value="Tech Campus">Enterprise Tech Campus</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
-            <Users className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            Expected Delegates
-          </label>
-          <input
-            type="number"
-            min={50}
-            max={5000}
-            value={brief.attendees}
-            onChange={(e) =>
-              setBrief({ ...brief, attendees: Number(e.target.value) })
-            }
-            className={`${inputClass} font-mono`}
-          />
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-              <IndianRupee className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              Max Budget Cap (INR)
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+              Event Title
             </label>
-            <span className="rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-              {formatINR(brief.budget)}
-            </span>
+            <input
+              required
+              value={brief.title}
+              onChange={(e) => setBrief({ ...brief, title: e.target.value })}
+              className="premium-input"
+            />
           </div>
-          <input
-            type="number"
-            min={100000}
-            step={50000}
-            value={brief.budget}
-            onChange={(e) =>
-              setBrief({ ...brief, budget: Number(e.target.value) })
-            }
-            className={`${inputClass} font-mono`}
-          />
-        </div>
 
-        <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-            Conference Tracks (comma-separated)
-          </label>
-          <input
-            value={tracksInput}
-            onChange={(e) => setTracksInput(e.target.value)}
-            className={inputClass}
-          />
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+              Expected Delegates
+            </label>
+            <input
+              type="number"
+              min={50}
+              max={10000}
+              value={brief.attendees}
+              onChange={(e) => setBrief({ ...brief, attendees: Number(e.target.value) })}
+              className="premium-input font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+              Session Tracks (Comma-Separated)
+            </label>
+            <input
+              value={tracksInput}
+              onChange={(e) => setTracksInput(e.target.value)}
+              placeholder="Agentic AI, FinTech, Cloud"
+              className="premium-input"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Regional Catering Mix & 18% GST Compliance Box */}
-      <div className="space-y-3.5 rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
-            <Utensils className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Regional Catering & Dietary Mix (%)</span>
+      {/* Location + Budget Grid */}
+      <div className="grid md:grid-cols-2 gap-5">
+        <div className="rounded-2xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+              <MapPin className="h-4 w-4" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">City & Venue Format</h3>
           </div>
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+              Host City ({ALL_INDIAN_CITIES.length} Hubs)
+            </label>
+            <select
+              value={brief.city}
+              onChange={(e) => handleCityChange(e.target.value)}
+              className="premium-input"
+            >
+              {ALL_INDIAN_CITIES.map((c) => (
+                <option key={c.city} value={c.city}>
+                  {c.city} — {c.region}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5">
+              Venue Type
+            </label>
+            <select
+              value={brief.venueType}
+              onChange={(e) =>
+                setBrief({ ...brief, venueType: e.target.value as EventBrief['venueType'] })
+              }
+              className="premium-input"
+            >
+              <option value="Convention Center">Convention Center</option>
+              <option value="Luxury Hotel">Luxury Hotel</option>
+              <option value="Tech Campus">Tech Campus</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white dark:bg-[#0d1526] border border-slate-200 dark:border-slate-800 p-6 shadow-sm flex flex-col justify-between space-y-4">
+          <div className="space-y-3.5">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                <Receipt className="h-4 w-4" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Budget & 18% GST</h3>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                Max Budget Cap
+              </span>
+              <span className="rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 px-2.5 py-1 text-xs font-mono font-bold">
+                {formatINR(brief.budget)}
+              </span>
+            </div>
+
+            <input
+              type="range"
+              min={500000}
+              max={20000000}
+              step={100000}
+              value={brief.budget}
+              onChange={(e) => setBrief({ ...brief, budget: Number(e.target.value) })}
+              className="w-full accent-cyan-600 cursor-pointer"
+            />
+          </div>
+
+          <label className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-3 cursor-pointer">
+            <div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white">Apply 18% GST Ledger</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                9% CGST + 9% SGST calculation
+              </div>
+            </div>
             <input
               type="checkbox"
               checked={brief.includeGst ?? true}
-              onChange={(e) =>
-                setBrief({ ...brief, includeGst: e.target.checked })
-              }
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+              onChange={(e) => setBrief({ ...brief, includeGst: e.target.checked })}
+              className="h-4 w-4 accent-cyan-600 rounded cursor-pointer"
             />
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>Include 18% Indian GST (9% CGST + 9% SGST)</span>
           </label>
         </div>
-
-        {/* Visual Stacked Dietary Bar */}
-        <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-          <div
-            style={{ width: `${(dietary.vegPct / totalDietary) * 100}%` }}
-            className="bg-emerald-500 transition-all"
-            title={`Pure Veg: ${dietary.vegPct}%`}
-          />
-          <div
-            style={{ width: `${(dietary.jainPct / totalDietary) * 100}%` }}
-            className="bg-amber-400 transition-all"
-            title={`Jain Certified: ${dietary.jainPct}%`}
-          />
-          <div
-            style={{ width: `${(dietary.nonVegPct / totalDietary) * 100}%` }}
-            className="bg-rose-500 transition-all"
-            title={`Non-Veg: ${dietary.nonVegPct}%`}
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Pure Veg (%)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={dietary.vegPct}
-              onChange={(e) => updateDietary('vegPct', Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs font-medium text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-              Jain Certified (%)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={dietary.jainPct}
-              onChange={(e) => updateDietary('jainPct', Number(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-amber-300 bg-amber-50/40 px-2.5 py-1.5 font-mono text-xs font-medium text-slate-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
-            />
-          </div>
-          <div>
-            <label className="flex items-center gap-1.5 text-[11px] font-medium text-rose-700 dark:text-rose-400">
-              <span className="h-2 w-2 rounded-full bg-rose-500" />
-              Non-Veg (%)
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={dietary.nonVegPct}
-              onChange={(e) =>
-                updateDietary('nonVegPct', Number(e.target.value))
-              }
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs font-medium text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            />
-          </div>
-        </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          Agents will query {brief.city ?? 'Bengaluru'} vendors, compute 18% GST, and audit schedule collisions.
-        </p>
-        <button
-          type="submit"
-          disabled={loading}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50"
-        >
-          <Play className="h-4 w-4" />
-          {loading
-            ? 'Agents Executing Tools & Auditing...'
-            : 'Launch Autonomous Orchestration'}
-        </button>
-      </div>
+      {/* Autonomous Auto-Pilot Box */}
+      {onRunAutoPilot && (
+        <div className="rounded-2xl bg-gradient-to-r from-cyan-500/10 via-indigo-500/10 to-emerald-500/10 border border-cyan-500/25 p-4 space-y-3">
+          <label className="flex items-center justify-between gap-3 cursor-pointer">
+            <div className="flex items-center gap-2.5">
+              <Bot className="h-4 w-4 text-teal-700 dark:text-cyan-400 shrink-0" />
+              <div>
+                <div className="text-xs font-extrabold text-slate-900 dark:text-white">
+                  Autonomous Auto-Pilot Chain
+                </div>
+                <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                  Automatically runs Vendor + GST Audit, LiveOps stress test, and ROEI forecast in one click.
+                </div>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={autoPilot}
+              onChange={(e) => setAutoPilot(e.target.checked)}
+              className="h-4 w-4 accent-indigo-600 rounded cursor-pointer"
+            />
+          </label>
+
+          {autoPilot && (
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">
+                Auto-Simulated LiveOps Scenario
+              </label>
+              <input
+                value={autoCrisis}
+                onChange={(e) => setAutoCrisis(e.target.value)}
+                className="premium-input !py-2 text-xs"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      <motion.button
+        whileHover={{ scale: 1.008 }}
+        whileTap={{ scale: 0.985 }}
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-cyan-600 via-indigo-600 to-emerald-600 hover:from-cyan-500 hover:via-indigo-500 hover:to-emerald-500 text-white font-bold text-sm py-4 px-6 shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50"
+      >
+        {loading ? (
+          <>
+            <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+            {autoPilot ? 'Running Autonomous Auto-Pilot...' : 'Orchestrating Plan & Schedule...'}
+          </>
+        ) : (
+          <>
+            {autoPilot ? <Bot className="h-4 w-4" /> : <Play className="h-4 w-4 fill-current" />}
+            {autoPilot ? 'Run Full Autonomous Auto-Pilot' : 'Launch Autonomous Orchestration'}
+          </>
+        )}
+      </motion.button>
     </form>
   );
 }

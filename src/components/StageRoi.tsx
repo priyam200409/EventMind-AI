@@ -3,21 +3,14 @@
 import { EventBrief, Session, VendorQuote } from '@/types/blackboard';
 import { RoiResult } from '@/lib/agents/roiMatch';
 import { checkBudget, formatINR } from '@/lib/guardrails';
-import {
-  TrendingUp,
-  Users,
-  IndianRupee,
-  Download,
-  RotateCcw,
-  Sparkles,
-} from 'lucide-react';
+import { TrendingUp, Users, Wallet, Target, Download, Sparkles, RotateCcw } from 'lucide-react';
 
 export function StageRoi({
   brief,
   quotes,
   sessions,
   roi,
-  onReset,
+  onReset
 }: {
   brief: EventBrief;
   quotes: VendorQuote[];
@@ -25,158 +18,96 @@ export function StageRoi({
   roi: RoiResult;
   onReset: () => void;
 }) {
-  const handleDownloadReport = () => {
-    const city = brief.city ?? 'Bengaluru';
-    const includeGst = brief.includeGst ?? true;
-    const audit = checkBudget(quotes, brief.budget, includeGst);
-
-    const lines = [
-      `# ${brief.title} — Executive Run-of-Show & GST Quotation`,
-      `**Host City:** ${city} | **Delegates:** ${brief.attendees} | **Venue Format:** ${brief.venueType}`,
-      '',
-      '## 1. Approved Vendor Procurement & 18% GST Ledger',
-      ...quotes.map(
-        (q) =>
-          `- **${q.category}**: ${q.vendorName} — Base: ${formatINR(q.cost)}${
-            includeGst
-              ? ` + GST (18%): ${formatINR(q.gstAmount ?? Math.round(q.cost * 0.18))}`
-              : ''
-          }`
-      ),
-      `- **Base Subtotal:** ${formatINR(audit.baseTotal)}`,
-      includeGst
-        ? `- **18% GST (9% CGST + 9% SGST):** ${formatINR(audit.gstAmount)}`
-        : '- **Tax:** Excluded',
-      `- **Net Payable Grand Total:** ${formatINR(audit.total)} (Budget Cap: ${formatINR(brief.budget)})`,
-      '',
-      '## 2. Critic-Verified IST Master Schedule',
-      ...sessions.map(
-        (s) =>
-          `- **${s.startTime}–${s.endTime} IST** | ${s.title} (*${s.speaker}*) — ${s.room} [${s.expectedAttendance}/${s.roomCapacity}]`
-      ),
-      '',
-      '## 3. Post-Event ROEI & Sponsor Matchmaking',
+  const handleDownload = () => {
+    const audit = checkBudget(quotes, brief.budget, brief.includeGst ?? true);
+    const md = [
+      `# ${brief.title} — Executive Run-of-Show`,
+      `**City:** ${brief.city} | **Pax:** ${brief.attendees} | **Format:** ${brief.venueType}`,
+      `\n## 1. Approved 18% GST Ledger`,
+      ...quotes.map((q: VendorQuote) => `- **${q.category}**: ${q.vendorName} — Base: ${formatINR(q.cost)}`),
+      `- **Grand Total (with GST):** ${formatINR(audit.total)} (Cap: ${formatINR(brief.budget)})`,
+      `\n## 2. Verified IST Master Schedule`,
+      ...sessions.map((s: Session) => `- **${s.startTime}-${s.endTime}** | ${s.title} (${s.room})`),
+      `\n## 3. ROEI & Pipeline Generation`,
       `- **ROEI Multiplier:** ${roi.roiMultiplier}`,
-      `- **Qualified Enterprise Leads:** ${roi.projectedLeads}`,
-      `- **Projected Pipeline:** ${roi.projectedPipelineInr} (Cost/Lead: ${roi.costPerLeadInr})`,
-      '',
-      `> ${roi.executiveSummary}`,
-    ];
-
-    const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+      `- **Qualified Leads:** ${roi.projectedLeads}`,
+      `- **Projected Pipeline:** ${roi.projectedPipelineInr}`,
+      `\n> ${roi.executiveSummary}`
+    ].join('\n');
+    
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${brief.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-executive-report.md`;
+    a.download = `${brief.city}-Executive-Report.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-slate-200/90 bg-white p-6 shadow-sm transition-colors dark:border-slate-800 dark:bg-[#111827]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
-        <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300">
-            Stage 04 • Attribution & Executive Sign-Off
-          </span>
-          <h2 className="mt-1.5 text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            AI Sponsor Matchmaking & Indian ROEI Report
-          </h2>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleDownloadReport}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export GST & Run-of-Show
-          </button>
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            New Event
-          </button>
-        </div>
-      </div>
-
-      {/* 4 Executive KPI Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50 to-violet-50/70 p-4 dark:border-indigo-500/30 dark:from-indigo-500/15 dark:to-violet-500/10">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
-            <TrendingUp className="h-3.5 w-3.5" />
-            ROEI Multiplier
+    <div className="space-y-6 animate-enter">
+      <div className="glass-panel rounded-2xl p-6 lg:p-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">Executive Analytics & ROEI</h2>
+            <p className="text-sm text-slate-400">AI-driven matchmaking and pipeline attribution based on local {brief.city} enterprise data.</p>
           </div>
-          <div className="mt-1.5 font-mono text-2xl font-extrabold text-indigo-950 dark:text-white">
-            {roi.roiMultiplier}
+          <div className="flex gap-2">
+            <button onClick={handleDownload} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors">
+              <Download className="h-4 w-4" /> Export Markdown
+            </button>
+            <button onClick={onReset} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-colors">
+              <RotateCcw className="h-4 w-4" /> Restart
+            </button>
           </div>
         </div>
 
-        <div className="rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-teal-50/70 p-4 dark:border-emerald-500/30 dark:from-emerald-500/15 dark:to-teal-500/10">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-            <Users className="h-3.5 w-3.5" />
-            Qualified Leads
+        {/* Gradient KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="animate-enter delay-100 bg-black/40 border border-white/5 rounded-xl p-5 relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 opacity-5"><TrendingUp className="h-24 w-24" /></div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">ROEI Multiplier</div>
+            <div className="text-3xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">{roi.roiMultiplier}</div>
           </div>
-          <div className="mt-1.5 font-mono text-2xl font-extrabold text-emerald-950 dark:text-white">
-            {roi.projectedLeads}
+          
+          <div className="animate-enter delay-200 bg-black/40 border border-white/5 rounded-xl p-5 relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 opacity-5"><Users className="h-24 w-24" /></div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Qualified Leads</div>
+            <div className="text-3xl font-extrabold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">{roi.projectedLeads}</div>
+          </div>
+
+          <div className="animate-enter delay-300 bg-black/40 border border-white/5 rounded-xl p-5 relative overflow-hidden col-span-2 sm:col-span-1">
+            <div className="absolute -right-4 -top-4 opacity-5"><Wallet className="h-24 w-24" /></div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Pipeline Gen</div>
+            <div className="text-xl sm:text-2xl font-mono font-bold text-white mt-1">{roi.projectedPipelineInr}</div>
+          </div>
+
+          <div className="animate-enter delay-300 bg-black/40 border border-white/5 rounded-xl p-5 relative overflow-hidden col-span-2 sm:col-span-1">
+            <div className="absolute -right-4 -top-4 opacity-5"><Target className="h-24 w-24" /></div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Cost Per Lead</div>
+            <div className="text-xl sm:text-2xl font-mono font-bold text-white mt-1">{roi.costPerLeadInr}</div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50 to-cyan-50/70 p-4 dark:border-sky-500/30 dark:from-sky-500/15 dark:to-cyan-500/10">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300">
-            <IndianRupee className="h-3.5 w-3.5" />
-            Projected Pipeline
-          </div>
-          <div className="mt-1.5 font-mono text-lg font-extrabold text-sky-950 dark:text-white">
-            {roi.projectedPipelineInr}
-          </div>
+        <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-sm text-indigo-100 leading-relaxed mb-8 flex gap-3 items-start">
+          <Sparkles className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
+          {roi.executiveSummary}
         </div>
 
-        <div className="rounded-xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50/70 p-4 dark:border-amber-500/30 dark:from-amber-500/15 dark:to-orange-500/10">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
-            <Sparkles className="h-3.5 w-3.5" />
-            Cost Per Lead
-          </div>
-          <div className="mt-1.5 font-mono text-lg font-extrabold text-amber-950 dark:text-white">
-            {roi.costPerLeadInr}
-          </div>
-        </div>
-      </div>
-
-      <p className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-4 text-xs leading-relaxed text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-        {roi.executiveSummary}
-      </p>
-
-      {/* High-Intent Indian Enterprise Buyer-Sponsor Matches */}
-      <div className="space-y-3">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          High-Intent Enterprise Buyer ↔ Sponsor Pairings
-        </h3>
-        {roi.matches.map((m, idx) => (
-          <div
-            key={idx}
-            className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-xs transition hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-indigo-500/40"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 font-bold text-slate-900 dark:text-white">
-              <span>
-                {m.attendeeProfile} ↔ {m.matchedSponsor}
-              </span>
-              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
-                {m.matchScore}% Intent Fit
-              </span>
+        {/* Intent Matchmaking Rows */}
+        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">High-Intent B2B Matchmaking</h3>
+        <div className="space-y-3">
+          {roi.matches.map((m: any, idx: number) => (
+            <div key={idx} className="p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                <div className="font-semibold text-white">{m.attendeeProfile} <span className="text-slate-500 mx-2">↔</span> {m.matchedSponsor}</div>
+                <div className="px-2 py-1 bg-white/10 text-white text-[10px] font-mono rounded font-bold">{m.matchScore}% Match</div>
+              </div>
+              <div className="text-xs text-indigo-400 font-medium mb-1">Via: {m.recommendedSession}</div>
+              <div className="text-xs text-slate-400">{m.reason}</div>
             </div>
-            <div className="mt-1 font-medium text-indigo-600 dark:text-indigo-400">
-              Recommended Session: {m.recommendedSession}
-            </div>
-            <p className="mt-1.5 leading-relaxed text-slate-600 dark:text-slate-400">
-              {m.reason}
-            </p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

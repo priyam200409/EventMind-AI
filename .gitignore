@@ -15,3 +15,5 @@ out/
 coverage/
 npm-debug.log*
 "@ | Out-File -FilePath .gitignore -Encoding utf8
+
+.data/
