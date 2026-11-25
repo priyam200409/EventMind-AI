@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
+import { z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import {
   runAutonomousCrisisAgent,
@@ -15,6 +16,18 @@ import {
 } from '@/lib/authSession';
 import { checkBudget } from '@/lib/guardrails';
 import type { EventBrief, VendorQuote } from '@/types/blackboard';
+
+const BriefInputSchema = z.object({
+  title: z.string().min(1).default('Enterprise Summit 2026'),
+  city: z.string().min(1).default('Bengaluru'),
+  venueType: z
+    .enum(['Convention Center', 'Luxury Hotel', 'Tech Campus'])
+    .default('Convention Center'),
+  attendees: z.coerce.number().int().min(10).default(300),
+  budget: z.coerce.number().min(500000, 'Minimum event budget is ₹5,00,000.'),
+  tracks: z.array(z.string()).min(1).default(['Agentic AI', 'Cloud']),
+  includeGst: z.boolean().optional().default(true),
+});
 
 async function getRequestUser(req: Request | NextRequest): Promise<SafeUserProfile | null> {
   const nextCookies = (req as NextRequest).cookies;
@@ -35,7 +48,16 @@ async function getRequestUser(req: Request | NextRequest): Promise<SafeUserProfi
   if (!session) return null;
   const user = await findUserByEmail(session.email);
   if (!user) return null;
-  const { passwordHash: _omitted, ...safeUser } = user;
+  const safeUser: SafeUserProfile = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    organization: user.organization,
+    provider: user.provider,
+    createdAt: user.createdAt,
+    lastLogin: user.lastLogin,
+  };
   return safeUser;
 }
 
@@ -82,31 +104,39 @@ export async function POST(req: Request | NextRequest) {
     const body = await req.json();
     const { action, brief, sessions, crisis, city, quotes } = body ?? {};
 
-    const normalizedBrief: EventBrief = {
-      title: brief?.title ?? 'Enterprise Summit 2026',
-      city: brief?.city ?? 'Bengaluru',
-      venueType: brief?.venueType ?? 'Convention Center',
-      attendees: Number(brief?.attendees) || 300,
-      budget: Number(brief?.budget) || 4500000,
-      tracks: Array.isArray(brief?.tracks) ? brief.tracks : ['Agentic AI', 'Cloud'],
-      includeGst: brief?.includeGst ?? true,
-    };
+    if (action === 'plan' || action === 'autopilot') {
+      const parsedBrief = BriefInputSchema.safeParse(brief);
+      if (!parsedBrief.success) {
+        return NextResponse.json(
+          { error: parsedBrief.error.issues[0]?.message || 'Invalid event brief.' },
+          { status: 400 }
+        );
+      }
 
-    if (action === 'autopilot') {
-      const result = await runFullAutoPilot({
-        brief: normalizedBrief,
-        autoCrisisLabel:
-          typeof body?.autoCrisisLabel === 'string' ? body.autoCrisisLabel : undefined,
-      });
-      await logEventRunToSupabase({
-        userEmail: user.email,
-        brief: normalizedBrief,
-        quotes: result.quotes,
-      });
-      return NextResponse.json(result);
-    }
+      const normalizedBrief: EventBrief = {
+        title: parsedBrief.data.title,
+        city: parsedBrief.data.city as EventBrief['city'],
+        venueType: parsedBrief.data.venueType,
+        attendees: parsedBrief.data.attendees,
+        budget: parsedBrief.data.budget,
+        tracks: parsedBrief.data.tracks,
+        includeGst: parsedBrief.data.includeGst,
+      };
 
-    if (action === 'plan') {
+      if (action === 'autopilot') {
+        const result = await runFullAutoPilot({
+          brief: normalizedBrief,
+          autoCrisisLabel:
+            typeof body?.autoCrisisLabel === 'string' ? body.autoCrisisLabel : undefined,
+        });
+        await logEventRunToSupabase({
+          userEmail: user.email,
+          brief: normalizedBrief,
+          quotes: result.quotes,
+        });
+        return NextResponse.json(result);
+      }
+
       const result = await runAutonomousPlanAgent(normalizedBrief);
       await logEventRunToSupabase({
         userEmail: user.email,
@@ -115,6 +145,21 @@ export async function POST(req: Request | NextRequest) {
       });
       return NextResponse.json(result);
     }
+
+    const venueType: EventBrief['venueType'] =
+      brief?.venueType === 'Luxury Hotel' || brief?.venueType === 'Tech Campus'
+        ? brief.venueType
+        : 'Convention Center';
+
+    const normalizedBrief: EventBrief = {
+      title: typeof brief?.title === 'string' && brief.title.trim() ? brief.title : 'Enterprise Summit 2026',
+      city: (typeof brief?.city === 'string' && brief.city.trim() ? brief.city : 'Bengaluru') as EventBrief['city'],
+      venueType,
+      attendees: Number(brief?.attendees) || 300,
+      budget: Number(brief?.budget) || 4500000,
+      tracks: Array.isArray(brief?.tracks) ? brief.tracks : ['Agentic AI', 'Cloud'],
+      includeGst: brief?.includeGst ?? true,
+    };
 
     if (action === 'crisis') {
       const result = await runAutonomousCrisisAgent({
