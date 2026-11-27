@@ -22,7 +22,13 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'EventMind AI — Autonomous Event Orchestration',
-  description: 'Multi-agent event planning, GST ledger auditing, live crisis recovery, and ROEI matchmaking.',
+  description:
+    'Multi-agent event planning, GST ledger auditing, live crisis recovery, and ROEI matchmaking.',
+  icons: {
+    icon: [{ url: '/icon.svg?v=2', type: 'image/svg+xml' }],
+    shortcut: '/icon.svg?v=2',
+    apple: '/icon.svg?v=2',
+  },
 };
 
 export default function RootLayout({

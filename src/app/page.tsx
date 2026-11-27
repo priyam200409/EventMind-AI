@@ -13,13 +13,13 @@ import { DEMO_PRESET, VENDOR_CATALOG, ALL_INDIAN_CITIES } from '@/lib/presets';
 import { formatINR } from '@/lib/guardrails';
 import { RoiResult } from '@/lib/agents/roiMatch';
 import { StageBrief } from '@/components/StageBrief';
+import { EventMindLogo } from '@/components/EventMindLogo';
 import { StagePlan } from '@/components/StagePlan';
 import { StageLiveOps } from '@/components/StageLiveOps';
 import { StageRoi } from '@/components/StageRoi';
 import { AgentStream } from '@/components/AgentStream';
 import { AuthScreen, StoredUserProfile } from '@/components/AuthScreen';
 import {
-  Cpu,
   Activity,
   LogOut,
   LayoutDashboard,
@@ -347,10 +347,13 @@ export default function HomePage() {
                       <div>
                         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
                           <div className="flex items-center gap-2.5">
-                            <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-white">
-                              <Cpu className="h-4 w-4" />
+                            <EventMindLogo className="h-8 w-8" />
+                            <div>
+                              <div className="font-extrabold text-sm leading-tight">EventMind AI</div>
+                              <div className="text-[9px] font-mono uppercase tracking-[0.16em] text-cyan-500 dark:text-cyan-400">
+                                Autonomous Event Suite
+                              </div>
                             </div>
-                            <span className="font-extrabold text-sm">EventMind AI</span>
                           </div>
                           <button
                             type="button"
@@ -403,16 +406,14 @@ export default function HomePage() {
               {/* Desktop Sidebar */}
               <aside className="hidden md:flex w-64 shrink-0 flex-col justify-between bg-white dark:bg-[#0b1222] border-r border-slate-200 dark:border-slate-800/90">
                 <div>
-                  <div className="h-16 px-5 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800/90">
-                    <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-cyan-600/20">
-                      <Cpu className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-extrabold tracking-tight leading-none">
+                  <div className="h-16 px-4 flex items-center gap-2.5 border-b border-slate-200 dark:border-slate-800/90">
+                    <EventMindLogo className="h-9 w-9" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-extrabold tracking-tight leading-tight truncate">
                         EventMind AI
                       </div>
-                      <div className="text-[10px] font-mono text-teal-700 dark:text-cyan-400 mt-1">
-                        {ALL_INDIAN_CITIES.length} INDIAN HUBS
+                      <div className="text-[9px] font-mono uppercase tracking-[0.14em] text-teal-700 dark:text-cyan-400 mt-0.5 truncate">
+                        Autonomous Event Suite
                       </div>
                     </div>
                   </div>
